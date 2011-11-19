@@ -39,13 +39,16 @@ my $recce = Marpa::XS::Recognizer->new( { grammar => $grammar } );
  
 open my $fh, '<', 'marpa.mp' or die "Can't open marpa.mp";
 
-while (<$fh>) {
+LINE: while (<$fh>) {
     my $line = $_;
     chomp $line;
 
     while ($line) {
         $line =~ s/^\s+//;
-        next if $line =~ m/^#/;
+        say "[$line]";
+
+        next LINE if $line =~ m/^\#/;
+
         if ($line =~ s/^(\w+)//) {
             $recce->read('Name', $1);
         }
