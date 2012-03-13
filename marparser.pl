@@ -15,90 +15,84 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use v5.10;
+use strict;
 use Marpa::XS;
 use Data::Dumper;
+use My_Actions;
  
-my $grammar = Marpa::XS::Grammar->new(
-    {   start   => 'Parser',
-        actions => 'My_Actions',
-        rules   => [
-            { lhs => 'Parser', rhs => [qw/Rule/], min => 1 },
-            { lhs => 'Rule', rhs => [qw/Lhs DeclareOp Rhs/] },
-            { lhs => 'Lhs', rhs => [qw/Name/] },
-            { lhs => 'Rhs', rhs => [qw/Names/] },
-            { lhs => 'Rhs', rhs => [qw/Names Plus/] },
-            { lhs => 'Rhs', rhs => [qw/Names Star/] },
-            { lhs => 'Names', rhs => [qw/Name/], min => 1 },
-        ],
+sub create_grammar {
+    my $grammar = Marpa::XS::Grammar->new(
+        {   start   => 'Parser',
+            actions => 'My_Actions',
+            rules   => [
+                { lhs => 'Parser', rhs => [qw/Rule/], min => 1 },
+                { lhs => 'Rule', rhs => [qw/Lhs DeclareOp Rhs/] },
+                { lhs => 'Lhs', rhs => [qw/Name/] },
+                { lhs => 'Rhs', rhs => [qw/Names/] },
+                { lhs => 'Rhs', rhs => [qw/Names Plus/] },
+                { lhs => 'Rhs', rhs => [qw/Names Star/] },
+                { lhs => 'Names', rhs => [qw/Name/], min => 1 },
+            ],
+        }
+    );
+    
+    $grammar->precompute();
+    return $grammar;
+}
+
+sub parse_token_stream {
+    my ($grammar, $fh) = @_;
+    my $recce = Marpa::XS::Recognizer->new( { grammar => $grammar } );
+
+    LINE: while (<$fh>) {
+        my $line = $_;
+        chomp $line;
+
+        while ($line) {
+            $line =~ s/^\s+//;
+
+            next LINE if $line =~ m/^\#/;
+
+            if ($line =~ s/^(\w+)//) {
+                $recce->read('Name', $1);
+            }
+            elsif ($line =~ s/^::=//) {
+                $recce->read('DeclareOp');
+            }
+            elsif ($line =~ s/^\+//) {
+                $recce->read('Plus', 1);
+            }
+            elsif ($line =~ s/^\*//) {
+                $recce->read('Star', 0);
+            }
+        }
     }
-);
- 
-$grammar->precompute();
- 
-my $recce = Marpa::XS::Recognizer->new( { grammar => $grammar } );
- 
+    
+    my $value_ref = $recce->value;
+    return $$value_ref;
+}
+
 open my $fh, '<', 'marpa.mp' or die "Can't open marpa.mp";
 
-LINE: while (<$fh>) {
-    my $line = $_;
-    chomp $line;
+my $grammar = create_grammar();
+my $value_ref = parse_token_stream($grammar, $fh);
 
-    while ($line) {
-        $line =~ s/^\s+//;
-        say "[$line]";
-
-        next LINE if $line =~ m/^\#/;
-
-        if ($line =~ s/^(\w+)//) {
-            $recce->read('Name', $1);
-        }
-        elsif ($line =~ s/^::=//) {
-            $recce->read('DeclareOp');
-        }
-        elsif ($line =~ s/^\+//) {
-            $recce->read('Plus', 1);
-        }
-        elsif ($line =~ s/^\*//) {
-            $recce->read('Star', 0);
-        }
-    }
-}
-
-sub My_Actions::Parser {shift;return {'rules' => \@_ }; }
-sub My_Actions::Rule {shift;return { @{$_[0]}, @{$_[2]} }; }
-sub My_Actions::Lhs {shift;return [lhs => $_[0]];}
-sub My_Actions::Rhs {shift;return [rhs => $_[0]];}
-sub My_Actions::Rhs {
-    shift;
-    if (@_ == 1) {
-        return [rhs => $_[0]];
-    }
-    elsif (@_ == 2) {
-        return [rhs => $_[0], min => $_[1]];
-    }
-}
-sub My_Actions::Names {shift;return [@_];}
- 
-my $value_ref = $recce->value;
 print <<'PRE';
-use v5.10;
-use Marpa::XS;
-use Data::Dumper;
- 
-my $grammar = Marpa::XS::Grammar->new(
-    {   start   => 'Parser',
-        actions => 'My_Actions',
+sub create_grammar {
+    my $grammar = Marpa::XS::Grammar->new(
+        {   start   => 'Parser',
+            actions => 'My_Actions',
 PRE
-my $out = Dumper($$value_ref);
+my $out = Dumper($value_ref);
 $out =~ s/\$VAR\d+\s+=\s+{//;
 $out =~ s/};\n$/}/s;
 print $out;
 
 print <<'POST';
-);
- 
-$grammar->precompute();
- 
-my $recce = Marpa::XS::Recognizer->new( { grammar => $grammar } );
+    );
+    
+    $grammar->precompute();
+    return $grammar;
+}
 POST
 
