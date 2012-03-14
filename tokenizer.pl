@@ -22,7 +22,7 @@ for my $rule (@$val) {
     if ($rule->{regex} =~ m/\(|\)/) {
         print <<"LINE";
             if (\$line =~ s{^$rule->{regex}}{}) {
-                \$recce->Read("$rule->{name}", \$1);
+                \$recce->read("$rule->{name}", \$1);
                 next;
             }
 LINE
@@ -30,7 +30,7 @@ LINE
     else {
         print <<"LINE";
             if (\$line =~ s{^$rule->{regex}}{}) {
-                \$recce->Read("$rule->{name}");
+                \$recce->read("$rule->{name}");
                 next;
             }
 LINE
