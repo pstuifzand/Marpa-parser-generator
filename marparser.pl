@@ -72,27 +72,36 @@ sub parse_token_stream {
     return $$value_ref;
 }
 
-open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
+sub generate_parser_code {
+    my ($parse_tree) = @_;
 
-my $grammar = create_grammar();
-my $value_ref = parse_token_stream($grammar, $fh);
-
-print <<'PRE';
+    my $out = <<'PRE';
 sub create_grammar {
     my $grammar = Marpa::XS::Grammar->new(
         {   start   => 'Parser',
             actions => 'My_Actions',
 PRE
-my $out = Dumper($value_ref);
-$out =~ s/\$VAR\d+\s+=\s+{//;
-$out =~ s/};\n$/}/s;
-print $out;
-
-print <<'POST';
+    $out .= generate_rules($parse_tree);
+    $out .= <<'POST';
     );
-    
     $grammar->precompute();
     return $grammar;
 }
 POST
+}
+
+sub generate_rules {
+    my ($parse_tree) = @_;
+    my $out = Dumper($parse_tree);
+    $out =~ s/\$VAR\d+\s+=\s+{//;
+    $out =~ s/};\n$/}/s;
+    return $out;
+}
+
+open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
+
+my $grammar = create_grammar();
+my $parse_tree = parse_token_stream($grammar, $fh);
+
+print generate_parser_code($parse_tree);
 
