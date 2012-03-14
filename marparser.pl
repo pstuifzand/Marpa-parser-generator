@@ -72,7 +72,7 @@ sub parse_token_stream {
     return $$value_ref;
 }
 
-open my $fh, '<', 'marpa.mp' or die "Can't open marpa.mp";
+open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
 
 my $grammar = create_grammar();
 my $value_ref = parse_token_stream($grammar, $fh);
