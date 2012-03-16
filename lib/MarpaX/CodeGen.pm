@@ -12,10 +12,25 @@ sub generate_code {
 
     print <<'HEADER';
 use strict;
-use Marpa::XS;
-use MarpaX::CodeGen 'generate_code';
-use MarpaX::SimpleLexer;
+use FindBin '$Bin';
+use lib $Bin.'/lib';
 
+use Marpa::XS;
+use MarpaX::SimpleLexer;
+HEADER
+
+    if ($config->{dumper}) {
+        print <<'HEADER';
+use Data::Dumper;
+HEADER
+    }
+    else {
+        print <<'HEADER';
+use MarpaX::CodeGen 'generate_code';
+HEADER
+    }
+
+    print <<'HEADER';
 my %tokens = (
 HEADER
 
@@ -53,12 +68,19 @@ my $simple_lexer = MarpaX::SimpleLexer->new({
 open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
 
 my $parse_tree = $simple_lexer->parse($fh);
-
-my $config = { namespace => 'My_Actions' };
-generate_code($parse_tree, $config);
-
 OUT
 
+    if ($config->{dumper}) {
+        print <<'OUT';
+print Dumper($parse_tree);
+OUT
+    }
+    else {
+        print <<'OUT';
+my $config = { namespace => 'My_Actions' };
+generate_code($parse_tree, $config);
+OUT
+    }
 }
 
 sub generate_parser_code {
