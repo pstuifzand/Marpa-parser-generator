@@ -46,7 +46,7 @@ sub _parse_token_stream {
                 my $re = $self->{tokens}{$token_name};
 
                 if (ref($re) eq 'Regexp') {
-                    if ($line =~ s/^($re)//s) {
+                    if ($line =~ s/^$re//s) {
                         if ($r->read($token_name, $1 ? $1 : '')) {
                             next PART;
                         }
