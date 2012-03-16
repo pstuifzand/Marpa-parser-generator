@@ -14,12 +14,28 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-Parser    ::= Rule+                             {{ shift; return { 'rules' => \@_ }         }}
+Name      = /\w+/
+DeclareOp = /::=/
+Plus      = $+
+Star      = $*
+CB        = /{{/
+CE        = /}}/
+Code      = /(?<!{{)\s*(.+)\s*(?=}})/
+SLASH     = $/
+EQ        = $=
+RX        = /(?<!\/)(.+)(?=(?<!\/))/
+Char      = /\$(.)/
+
+Parser    ::= Decl+                             {{ return $_[0]; }}
+Decl      ::= Rule                              {{ push @{$_[0]->{rules}}, $_[1] }}
+Decl      ::= TokenRule                         {{ push @{$_[0]->{tokens}}, $_[1] }}
+TokenRule ::= Lhs EQ SLASH RX SLASH             {{ shift; return { @{$_[0]}, regex => qr/$_[3]/ } }}
+TokenRule ::= Lhs EQ Char                       {{ shift; return { @{$_[0]}, 'char' => $_[2] } }}
 Rule      ::= Lhs DeclareOp Rhs                 {{ shift; return { @{$_[0]}, @{$_[2]} }     }}
 Rule      ::= Lhs DeclareOp Rhs CB Code CE      {{ shift; return { @{$_[0]}, @{$_[2]}, code => $_[4] }     }}
 Lhs       ::= Name                              {{ shift; return [ lhs => $_[0] ]           }}
 Rhs       ::= Names                             {{ shift; return [ rhs => $_[0] ]           }}
-Rhs       ::= Names Plus                        {{ shift; return [ rhs => $_[0], min => 1 ] }}
 Rhs       ::= Names Star                        {{ shift; return [ rhs => $_[0], min => 0 ] }}
+Rhs       ::= Names Plus                        {{ shift; return [ rhs => $_[0], min => 1 ] }}
 Names     ::= Name+                             {{ shift; return [ @_ ];                    }}
 

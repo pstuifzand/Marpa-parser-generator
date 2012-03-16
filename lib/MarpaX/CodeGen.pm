@@ -14,54 +14,45 @@ sub generate_code {
 use strict;
 use Marpa::XS;
 use MarpaX::CodeGen 'generate_code';
+use MarpaX::SimpleLexer;
 
 my %tokens = (
-    Name      => qr/(\w+)/,
-    DeclareOp => qr/::=/,
-    Plus      => qr/\+/,
-    Star      => qr/\*/,
-    CB        => qr/{{/,
-    CE        => qr/}}/,
-    Code      => qr/(.+)(?=}})/,
-);
+HEADER
 
-sub parse_token_stream {
-    my ($grammar, $fh) = @_;
-
-    my $r= Marpa::XS::Recognizer->new( { grammar => $grammar } );
-
-    LINE: while (<$fh>) {
-        my $line = $_;
-        chomp $line;
-
-        while ($line) {
-            $line =~ s/^\s+//;
-            next LINE if $line =~ m/^\#/;
-
-            for my $token_name (@{$r->terminals_expected}) {
-                my $re = $tokens{$token_name};
-
-                if ($line =~ s/^$re//) {
-                    $r->read($token_name, $1 ? $1 : '');
-                }
-            }
+    for (@{ $parse_tree->{tokens} }) {
+        if ($_->{regex}) {
+            printf("       %-30s => qr/%s/,\n",$_->{lhs}, $_->{regex});
+        }
+        else {
+            $_->{char} =~ s/^\$//;
+            printf("       %-30s => '%s',\n", $_->{lhs}, $_->{char});
         }
     }
-    
-    my $value_ref = $r->value;
-    return $$value_ref;
-}
 
+    #Name      => qr/(\w+)/,
+    #DeclareOp => qr/::=/,
+    #Plus      => qr/\+/,
+    #Star      => qr/\*/,
+    #CB        => qr/{{/,
+    #CE        => qr/}}/,
+    #Code      => qr/(.+)(?=}})/,
+
+    print <<'HEADER';
+);
 HEADER
 
     print generate_actions($parse_tree, $config);
     print generate_parser_code($parse_tree, $config);
 
     print <<'OUT';
+my $simple_lexer = MarpaX::SimpleLexer->new({
+    create_grammar => \&create_grammar,
+    tokens         => \%tokens,
+});
+
 open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
 
-my $grammar = create_grammar();
-my $parse_tree = parse_token_stream($grammar, $fh);
+my $parse_tree = $simple_lexer->parse($fh);
 
 my $config = { namespace => 'My_Actions' };
 generate_code($parse_tree, $config);
@@ -81,6 +72,7 @@ sub create_grammar {
         {   start   => 'Parser',
             actions => '$namespace',
 PRE
+
     $out .= generate_rules($parse_tree, $config);
 
     $out .= <<'POST';
@@ -95,7 +87,8 @@ POST
 
 sub generate_rules {
     my ($parse_tree) = @_;
-    my $out = Dumper($parse_tree);
+    my $rules = $parse_tree->{rules};
+    my $out = Dumper({rules=>$rules});
     $out =~ s/\$VAR\d+\s+=\s+{//;
     $out =~ s/};\n$/,/s;
     return $out;

@@ -17,6 +17,7 @@
 use v5.10;
 use strict;
 use MarpaX::CodeGen 'generate_code';
+use MarpaX::SimpleLexer;
 use Marpa::XS;
 use Data::Dumper;
 use My_Actions;
@@ -26,28 +27,38 @@ $Data::Dumper::Deepcopy = 1;
 my %tokens = (
     Name      => qr/(\w+)/,
     DeclareOp => qr/::=/,
-    Plus      => qr/\+/,
-    Star      => qr/\*/,
+    Plus      => '+',
+    Star      => '*',
     CB        => qr/{{/,
     CE        => qr/}}/,
-    Code      => qr/(.+)(?=}})/,
+    Code      => qr/(?<!{{)\s*(.+)\s*(?=}})/,
+    EQ        => '=',
+    Char      => qr/\$(.)/,
+    SLASH     => '/',
+    RX        => qr/(?<!\/)(.+)(?=(?<!\/))/,
 );
  
 sub create_grammar {
+    my ($terminals) = @_;
+
     my $grammar = Marpa::XS::Grammar->new(
         {   start   => 'Parser',
             actions => 'My_Actions',
             rules   => [
-                { lhs => 'Parser', rhs => [qw/Rule/], min => 1 },
-                { lhs => 'Rule', rhs => [qw/Lhs DeclareOp Rhs/], action => 'Rule' },
-                { lhs => 'Rule', rhs => [qw/Lhs DeclareOp Rhs CB Code CE/], action => 'RuleWithCode' },
-                { lhs => 'Lhs', rhs => [qw/Name/] },
-                { lhs => 'Rhs', rhs => [qw/Names/] },
-                { lhs => 'Rhs', rhs => [qw/Names Plus/], action => 'Plus' },
-                { lhs => 'Rhs', rhs => [qw/Names Star/], action => 'Star' },
-                { lhs => 'Names', rhs => [qw/Name/], min => 1 },
+                { lhs => 'Parser',    rhs => [qw/Decl/], min => 1 },
+                { lhs => 'Decl',      rhs  => [qw/Rule/], action => 'DeclRule' },
+                { lhs => 'Decl',      rhs  => [qw/TokenRule/], action => 'DeclToken' },
+                { lhs => 'TokenRule', rhs => [qw/Lhs EQ SLASH RX SLASH/], action => 'TokenRule_0' },
+                { lhs => 'TokenRule', rhs => [qw/Lhs EQ Char/], action => 'TokenRule_1' },
+                { lhs => 'Rule',      rhs => [qw/Lhs DeclareOp Rhs/], action => 'Rule' },
+                { lhs => 'Rule',      rhs => [qw/Lhs DeclareOp Rhs CB Code CE/], action => 'RuleWithCode' },
+                { lhs => 'Lhs',       rhs => [qw/Name/] },
+                { lhs => 'Rhs',       rhs => [qw/Names/] },
+                { lhs => 'Rhs',       rhs => [qw/Names Plus/], action => 'Plus' },
+                { lhs => 'Rhs',       rhs => [qw/Names Star/], action => 'Star' },
+                { lhs => 'Names',     rhs => [qw/Name/], min => 1 },
             ],
-            terminals => [keys %tokens],
+            terminals => $terminals,
         }
     );
     
@@ -55,40 +66,16 @@ sub create_grammar {
     return $grammar;
 }
 
-sub parse_token_stream {
-    my ($grammar, $fh) = @_;
-
-    my $r= Marpa::XS::Recognizer->new( { grammar => $grammar } );
-
-    LINE: while (<$fh>) {
-        my $line = $_;
-        chomp $line;
-
-        while ($line) {
-            $line =~ s/^\s+//;
-            next LINE if $line =~ m/^\#/;
-
-            for my $token_name (@{$r->terminals_expected}) {
-                my $re = $tokens{$token_name};
-
-                if ($line =~ s/^$re//) {
-                    $r->read($token_name, $1 ? $1 : '');
-                }
-            }
-        }
-    }
-    
-    my $value_ref = $r->value;
-    return $$value_ref;
-}
-
+my $simple_lexer = MarpaX::SimpleLexer->new({
+    create_grammar => \&create_grammar,
+    tokens         => \%tokens,
+});
 
 open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
 
-my $grammar = create_grammar();
-my $parse_tree = parse_token_stream($grammar, $fh);
+my $parse_tree = $simple_lexer->parse($fh);
+#print Dumper($parse_tree);
 
 my $config = { namespace => 'My_Actions' };
 generate_code($parse_tree,$config);
-
 
