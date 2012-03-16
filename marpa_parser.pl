@@ -74,8 +74,7 @@ my $simple_lexer = MarpaX::SimpleLexer->new({
 open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
 
 my $parse_tree = $simple_lexer->parse($fh);
-#print Dumper($parse_tree);
 
 my $config = { namespace => 'My_Actions' };
-generate_code($parse_tree,$config);
+generate_code($parse_tree, $config);
 
