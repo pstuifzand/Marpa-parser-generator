@@ -63,6 +63,8 @@ sub _parse_token_stream {
                     }
                 }
             }
+            # Didn't know what to do...
+            die "No expected terminal found here";
         }
     }
     
