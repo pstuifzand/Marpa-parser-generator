@@ -19,6 +19,18 @@ use strict;
 use Marpa::XS;
 use Data::Dumper;
 use My_Actions;
+
+$Data::Dumper::Deepcopy = 1;
+
+my %tokens = (
+    Name      => qr/(\w+)/,
+    DeclareOp => qr/::=/,
+    Plus      => qr/\+/,
+    Star      => qr/\*/,
+    CB        => qr/{{/,
+    CE        => qr/}}/,
+    Code      => qr/(.+)(?=}})/,
+);
  
 sub create_grammar {
     my $grammar = Marpa::XS::Grammar->new(
@@ -26,13 +38,15 @@ sub create_grammar {
             actions => 'My_Actions',
             rules   => [
                 { lhs => 'Parser', rhs => [qw/Rule/], min => 1 },
-                { lhs => 'Rule', rhs => [qw/Lhs DeclareOp Rhs/] },
+                { lhs => 'Rule', rhs => [qw/Lhs DeclareOp Rhs/], action => 'Rule' },
+                { lhs => 'Rule', rhs => [qw/Lhs DeclareOp Rhs CB Code CE/], action => 'RuleWithCode' },
                 { lhs => 'Lhs', rhs => [qw/Name/] },
                 { lhs => 'Rhs', rhs => [qw/Names/] },
-                { lhs => 'Rhs', rhs => [qw/Names Plus/] },
-                { lhs => 'Rhs', rhs => [qw/Names Star/] },
+                { lhs => 'Rhs', rhs => [qw/Names Plus/], action => 'Plus' },
+                { lhs => 'Rhs', rhs => [qw/Names Star/], action => 'Star' },
                 { lhs => 'Names', rhs => [qw/Name/], min => 1 },
             ],
+            terminals => [keys %tokens],
         }
     );
     
@@ -42,7 +56,8 @@ sub create_grammar {
 
 sub parse_token_stream {
     my ($grammar, $fh) = @_;
-    my $recce = Marpa::XS::Recognizer->new( { grammar => $grammar } );
+
+    my $r= Marpa::XS::Recognizer->new( { grammar => $grammar } );
 
     LINE: while (<$fh>) {
         my $line = $_;
@@ -50,38 +65,37 @@ sub parse_token_stream {
 
         while ($line) {
             $line =~ s/^\s+//;
-
             next LINE if $line =~ m/^\#/;
+            #say $line;
 
-            if ($line =~ s/^(\w+)//) {
-                $recce->read('Name', $1);
-            }
-            elsif ($line =~ s/^::=//) {
-                $recce->read('DeclareOp');
-            }
-            elsif ($line =~ s/^\+//) {
-                $recce->read('Plus', 1);
-            }
-            elsif ($line =~ s/^\*//) {
-                $recce->read('Star', 0);
+            for my $token_name (@{$r->terminals_expected}) {
+                #say $token_name;
+                my $re = $tokens{$token_name};
+
+                if ($line =~ s/^$re//) {
+                    $r->read($token_name, $1 ? $1 : '');
+                }
             }
         }
     }
     
-    my $value_ref = $recce->value;
+    my $value_ref = $r->value;
     return $$value_ref;
 }
 
 sub generate_parser_code {
-    my ($parse_tree) = @_;
+    my ($parse_tree, $config) = @_;
 
-    my $out = <<'PRE';
+    my $namespace = $config->{namespace};
+
+    my $out = <<"PRE";
 sub create_grammar {
-    my $grammar = Marpa::XS::Grammar->new(
+    my \$grammar = Marpa::XS::Grammar->new(
         {   start   => 'Parser',
-            actions => 'My_Actions',
+            actions => '$namespace',
 PRE
-    $out .= generate_rules($parse_tree);
+    $out .= generate_rules($parse_tree, $config);
+
     $out .= <<'POST';
     );
     $grammar->precompute();
@@ -98,10 +112,36 @@ sub generate_rules {
     return $out;
 }
 
+sub generate_actions {
+    my ($parse_tree, $config) = @_;
+    my %actions;
+
+    for (@{ $parse_tree->{rules} }) {
+        my $c = @{ $actions{$_->{lhs}} || [] };
+        my $name = $_->{lhs}.'_'.$c;
+        $_->{action} = $name;
+        push @{ $actions{$_->{lhs}} }, { name => $name, code => $_->{code} };
+        delete $_->{code};
+    }
+
+    my $namespace = $config->{namespace};
+
+    for my $rule_name (keys %actions) {
+        for my $action (@{$actions{$rule_name}}) {
+            say "sub ${namespace}::$action->{name} {";
+            say "\t".$action->{code};
+            say "}";
+        }
+    }
+}
+
+
 open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
 
 my $grammar = create_grammar();
 my $parse_tree = parse_token_stream($grammar, $fh);
 
-print generate_parser_code($parse_tree);
+my $config = { namespace => 'My_Actions' };
+generate_actions($parse_tree, $config);
+print generate_parser_code($parse_tree, $config);
 

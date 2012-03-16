@@ -1,4 +1,3 @@
-Regex      ::= R:R:(.*)$
-Name       ::= R:(\w+)
-DeclareOp  ::= R:::=
-Banaan     ::= R:banaan
+Regex=R:R:(.*)$
+Name=R:(\w+)
+DeclareOp=R:=

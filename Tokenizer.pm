@@ -13,9 +13,9 @@ sub parse_token_stream {
 
             rules   => [
                 { lhs => 'Tokenizer', rhs => [qw/Rule/], min => 1, action => 'rules'},
-                { lhs => 'Rule', rhs => [qw/Lhs DeclareOp Rhs/], action => 'rule' },
-                { lhs => 'Lhs', rhs => [qw/Name/], action => 'name' },
-                { lhs => 'Rhs', rhs => [qw/Regex/], action => 'regex' },
+                { lhs => 'Rule',      rhs => [qw/Lhs DeclareOp Rhs/], action => 'rule' },
+                { lhs => 'Lhs',       rhs => [qw/Name/], action => 'name' },
+                { lhs => 'Rhs',       rhs => [qw/Regex/], action => 'regex' },
             ],
         }
     );
@@ -38,7 +38,7 @@ sub parse_token_stream {
             elsif ($line =~ s/^(\w+)//) {
                 $recce->read('Name', $1);
             }
-            elsif ($line =~ s/^::=//) {
+            elsif ($line =~ s/^=//) {
                 $recce->read('DeclareOp');
             }
             else {

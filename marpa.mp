@@ -14,10 +14,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-Parser    ::= Rule+
-Rule      ::= Lhs DeclareOp Rhs
-Lhs       ::= Name
-Rhs       ::= Names
-Rhs       ::= Names Plus
-Rhs       ::= Names Star
-Names     ::= Name+
+Parser    ::= Rule+                    {{ shift; return { 'rules' => \@_; }        }}
+Rule      ::= Lhs DeclareOp Rhs        {{ shift; return { @{$_[0]}, @{$_[2]} }     }}
+Lhs       ::= Name                     {{ shift; return [ lhs => $_[0] ];          }}
+Rhs       ::= Names                    {{ shift; return [ rhs => $_[0] ]           }}
+Rhs       ::= Names Plus               {{ shift; return [ rhs => $_[0], min => 1 ] }}
+Rhs       ::= Names Star               {{ shift; return [ rhs => $_[0], min => 0 ] }}
+Names     ::= Name+                    {{ shift; return [ @_ ];                    }}
+
