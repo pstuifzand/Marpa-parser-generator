@@ -16,6 +16,7 @@
 
 use v5.10;
 use strict;
+use MarpaX::CodeGen 'generate_code';
 use Marpa::XS;
 use Data::Dumper;
 use My_Actions;
@@ -66,10 +67,8 @@ sub parse_token_stream {
         while ($line) {
             $line =~ s/^\s+//;
             next LINE if $line =~ m/^\#/;
-            #say $line;
 
             for my $token_name (@{$r->terminals_expected}) {
-                #say $token_name;
                 my $re = $tokens{$token_name};
 
                 if ($line =~ s/^$re//) {
@@ -83,58 +82,6 @@ sub parse_token_stream {
     return $$value_ref;
 }
 
-sub generate_parser_code {
-    my ($parse_tree, $config) = @_;
-
-    my $namespace = $config->{namespace};
-
-    my $out = <<"PRE";
-sub create_grammar {
-    my \$grammar = Marpa::XS::Grammar->new(
-        {   start   => 'Parser',
-            actions => '$namespace',
-PRE
-    $out .= generate_rules($parse_tree, $config);
-
-    $out .= <<'POST';
-    );
-    $grammar->precompute();
-    return $grammar;
-}
-POST
-}
-
-sub generate_rules {
-    my ($parse_tree) = @_;
-    my $out = Dumper($parse_tree);
-    $out =~ s/\$VAR\d+\s+=\s+{//;
-    $out =~ s/};\n$/}/s;
-    return $out;
-}
-
-sub generate_actions {
-    my ($parse_tree, $config) = @_;
-    my %actions;
-
-    for (@{ $parse_tree->{rules} }) {
-        my $c = @{ $actions{$_->{lhs}} || [] };
-        my $name = $_->{lhs}.'_'.$c;
-        $_->{action} = $name;
-        push @{ $actions{$_->{lhs}} }, { name => $name, code => $_->{code} };
-        delete $_->{code};
-    }
-
-    my $namespace = $config->{namespace};
-
-    for my $rule_name (keys %actions) {
-        for my $action (@{$actions{$rule_name}}) {
-            say "sub ${namespace}::$action->{name} {";
-            say "\t".$action->{code};
-            say "}";
-        }
-    }
-}
-
 
 open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
 
@@ -142,6 +89,6 @@ my $grammar = create_grammar();
 my $parse_tree = parse_token_stream($grammar, $fh);
 
 my $config = { namespace => 'My_Actions' };
-generate_actions($parse_tree, $config);
-print generate_parser_code($parse_tree, $config);
+generate_code($parse_tree,$config);
+
 
