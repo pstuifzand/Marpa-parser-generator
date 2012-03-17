@@ -28,7 +28,8 @@ sub generate_code {
     $self->add_line("End");
 
     for my $key (sort keys %{$self->{strings}}) {
-        print "\t".'.STR ' . $key . " " . $self->{strings}{$key} . "\n";
+        $self->{strings}{$key} =~ s/"/\\"/g;
+        print qq{.STR\t$key\t"$self->{strings}{$key}"\n};
     }
     print "\n";
 

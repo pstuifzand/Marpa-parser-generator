@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 use 5.14.1;
 use Data::Dumper;
+use Regexp::Common;
 
 sub load_program {
     my ($fh) = @_;
@@ -14,9 +15,12 @@ sub load_program {
 
         s/^\s+//;
 
-        if (m/^\.STR\s+(\w+)\s(.*)$/) {
+        if (m/^\.STR\t(\w+)\t($RE{quoted})$/) {
             my $k = $1;
             my $v = $2;
+            $v =~ s/^"//;
+            $v =~ s/"$//;
+            $v =~ s/\\"/"/g;
             $v =~ s/\\n/\n/g;
             $strings{$k} = $v;
         }
@@ -53,7 +57,7 @@ sub create_machine {
 
     my %opcodes = (
         Emit       => sub { print $_[1]; return $_[0]->{ip}+1 },
-        Emit_Field => sub { print $_[0]->{data}{$_[1]}; return $_[0]->{ip}+1 },
+        Emit_Field => sub { print $_[0]->{data}{$_[1]}||''; return $_[0]->{ip}+1 },
         Exists     => sub { $_[0]->{jmp_flag} = exists $_[0]->{data}{$_[1]}; return $_[0]->{ip}+1 },
         JF         => sub { return !$_[0]->{jmp_flag} ? $_[0]->{labels}{$_[1]} : $_[0]->{ip}+1; },
         JT         => sub { return $_[0]->{jmp_flag}  ? $_[0]->{labels}{$_[1]} : $_[0]->{ip}+1; },
