@@ -1,6 +1,7 @@
 package MarpaX::SimpleLexer;
 use strict;
 use 5.14.2;
+use Data::Dumper;
 
 sub new {
     my ($klass, $options) = @_;
@@ -36,35 +37,44 @@ sub _parse_token_stream {
         chomp $line;
 
         #say STDERR "=====================";
-        PART: while ($line) {
-            $line =~ s/^\s+//;
-            ##say STDERR "Line:    $line";
+        PART: while (length $line > 0) {
+            #$line =~ s/^\s+//;
+            #say STDERR "Line:    $line";
             next LINE if $line =~ m/^\#/;
 
             for my $token_name (@{$r->terminals_expected}) {
+
                 #say STDERR "Token:   $token_name";
                 my $re = $self->{tokens}{$token_name};
 
                 if (ref($re) eq 'Regexp') {
+
+                    #say STDERR 're';
+
                     if ($line =~ s/^$re//s) {
-                        if ($r->read($token_name, $1 ? $1 : '')) {
+#                        #say "[$1]";
+                        if ($r->read($token_name, $1)) {
                             next PART;
                         }
                     }
                 }
                 else {
-                    my ($char, $rest) = split(//, $line, 2);
+                    ##say STDERR "RE: [$re][$line]";
+                    #say STDERR "ORD: [".ord($re)."][".ord($line)."]";
 
-                    if ($re eq $char) {
-                        if ($r->read($token_name, $char)) {
-                            $line = $rest;
-                            next PART;
-                        }
+                    if (ord($re) == ord($line)) {
+                        my $read = $r->read($token_name, $re);
+                        $line = substr $line, 1;
+                        next PART;
                     }
                 }
             }
-            # Didn't know what to do...
-            die "No expected terminal found here";
+            $line =~ s/^\s+//;
+            if (length $line> 0) {
+                # Didn't know what to do...
+                #warn 'hmm ' . $line;
+#                die "No expected terminal found here";
+            }
         }
     }
     

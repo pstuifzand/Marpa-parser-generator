@@ -1,0 +1,12 @@
+p {
+    label id=@id { @title }
+    " "
+    ?@description { 
+        span class="description" {
+            "(" @description ")"
+        }
+        " "
+    }
+    input type="text" id=@id name=@name value=@value
+}
+"\n"

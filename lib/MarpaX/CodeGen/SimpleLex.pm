@@ -1,11 +1,21 @@
-package MarpaX::CodeGen;
+package MarpaX::CodeGen::SimpleLex;
 use 5.14.2;
 use strict;
 use Data::Dumper;
 $Data::Dumper::Deepcopy = 1;
 
-use parent 'Exporter';
-our @EXPORT_OK = qw/generate_code/;
+use Carp;
+
+sub new {
+    my ($klass, $config) = @_;
+    my $self = bless { config => $config }, $klass;
+
+    if (!defined $config->{package}) {
+        croak "Variable 'package' not specified";
+    }
+
+    return $self;
+}
 
 sub find_inline_tokens {
     my ($parse_tree) = @_;
@@ -38,41 +48,48 @@ sub find_inline_tokens {
 }
 
 sub generate_code {
-    my ($parse_tree, $config) = @_;
+    my ($self, $parse_tree) = @_;
+
+    my $package = $self->{config}->{package};
 
     find_inline_tokens($parse_tree);
 
+    print "package $package;\n";
+
     print <<'HEADER';
 use strict;
-use FindBin '$Bin';
-use lib $Bin.'/lib';
 
 use Marpa::XS;
-use MarpaX::SimpleLexer;
+use MarpaX::Simple::Lexer;
 HEADER
 
     generate_tokens($parse_tree->{tokens});
 
-    print generate_actions($parse_tree, $config);
-    print generate_parser_code($parse_tree, $config);
+    print generate_actions($parse_tree, $self->{config});
+    print generate_parser_code($parse_tree, $self->{config});
 
     print <<'OUT';
-my $simple_lexer = MarpaX::SimpleLexer->new({
-    create_grammar => \&create_grammar,
-    tokens         => \%tokens,
-});
+sub new {
+    my ($klass) = @_;
+    my $self = bless {}, $klass;
+    return $self;
+}
 
-open my $fh, '<', $ARGV[0] or die "Can't open $ARGV[0]";
-my $codegen_class = $ARGV[1] // 'MarpaX::CodeGen::Dumper';
+sub parse {
+    my ($self, $fh) = @_;
+    my $grammar = create_grammar();
+    my $recognizer = Marpa::XS::Recognizer->new({ grammar => $grammar });
+    my $simple_lexer = MarpaX::Simple::Lexer->new(
+        recognizer     => $recognizer,
+#        input_filter   => sub { ${$_[0]} =~ s/[\r\n]+//g },
+        tokens         => \%tokens,
+    );
+    $simple_lexer->recognize($fh);
+    my $parse_tree = ${$recognizer->value};
+    return $parse_tree;
+}
 
-my $parse_tree = $simple_lexer->parse($fh);
-OUT
-
-    print <<'OUT';
-my $config = { namespace => 'My_Actions' };
-eval "require $codegen_class";
-my $codegen = $codegen_class->new();
-$codegen->generate_code($parse_tree, $config);
+1;
 OUT
 }
 
@@ -101,7 +118,7 @@ HEADER
 sub generate_parser_code {
     my ($parse_tree, $config) = @_;
 
-    my $namespace = $config->{namespace};
+    my $namespace = $config->{package} . '::Actions';
 
     my $out = <<"PRE";
 sub create_grammar {
@@ -113,7 +130,7 @@ PRE
     $out .= generate_rules($parse_tree, $config);
 
     $out .= <<'POST';
-            terminals => [keys %tokens],
+            lhs_terminals => 0,
         }
     );
     $grammar->precompute();
@@ -130,7 +147,6 @@ sub generate_rules {
             $_->{rhs} = [];
         }
     }
-
     my $out = Dumper({rules=>$rules});
     $out =~ s/\$VAR\d+\s+=\s+{//;
     $out =~ s/};\n$/,/s;
@@ -149,7 +165,7 @@ sub generate_actions {
         delete $_->{code};
     }
 
-    my $namespace = $config->{namespace};
+    my $namespace = $config->{package} . '::Actions';
 
     my $out = '';
     for my $rule_name (keys %actions) {
@@ -163,3 +179,4 @@ sub generate_actions {
 }
 
 1;
+

@@ -1,5 +1,6 @@
-
 Number = /\d+/
+Space = /[ \r\n\t]+/
 
-
-Parser ::= Number {{ return $_[1]; }}
+Parser ::= Number WS         {{ return $_[1]; }}
+WS     ::= Null
+WS     ::= Space

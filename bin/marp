@@ -1,0 +1,7 @@
+#!/usr/bin/env perl
+use lib 'lib';
+use Marp::App;
+my $app = Marp::App->new();
+$app->parse_args(@ARGV);
+$app->run();
+

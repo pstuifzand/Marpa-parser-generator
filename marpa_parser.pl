@@ -14,8 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#
+# The original marpa parser generator
+
 use v5.10;
 use strict;
+use lib 'lib';
 use MarpaX::CodeGen 'generate_code';
 use MarpaX::SimpleLexer;
 use Marpa::XS;
