@@ -1,0 +1,86 @@
+=head1 TITLE
+
+How to write a grammar?
+
+=head1 AUTHOR
+
+Peter Stuifzand  <peter@tweevijftig.nl>
+
+=head1 VERSION
+
+Created: 23 Mar 2012
+Version: 1
+
+=head1 ABSTRACT
+
+In this document I will explain how you create a grammar file, without at why
+you would like to do this. A grammar file consists out of two parts. The first
+part contains the rules of lexer. The second part contains the rules of the
+parser.
+
+=head1 Part 1: The Lexer
+
+The lexer reads in characters from a file handle and group these characters
+into tokens. Because this parser is based on L<Marpa::XS> it will know which
+tokens to look for.
+    
+To lex a number you would use the following Perl regular expression.
+
+    Number = /(\d+)/
+
+This line starts with the name of the token. It is followed by the '='
+character, which is followed by a regular expression. The regular expression
+is delimited by two slashes. The parentheses will extract that part of the
+regular expression as the token text.
+
+=head1 Part 2: The parser
+
+The rules for the parser are a bit more involved.
+
+    Parser      ::= Expression+     {{ shift; return \@_; }}
+
+Each parser rule contains three parts. The left hand side, the right hand side
+and the action. The left hand and right hand side are separated by a '::='
+operator.
+
+The left hand side should always be a Name. One name can be used multiple
+times. If a name is used multiple times, it tells the parser that it should
+expect any of those expression.
+
+    Expression ::= Number
+    Expression ::= String
+
+The above two lines tell the parser that an C<Expression> could be a C<Number> or
+a C<String>.
+
+The right hand side can contains multiple items. Each item on the right hand
+side should follow some rules. It can contain a name from the left hand side.
+It can also contain multiple items. A single name followed by a '+' tells the
+parser to try to match at least one of those items.
+
+The right hand side can also contains single characters. These look like a
+dollar-sign followed by the character.
+
+    Expression ::= $( List $)
+    List       ::= Expression+
+
+Using the name C<Null> on the right hand side tells the parser to match if it
+finds nothing. This can be used in a whitespace rule.
+
+    WS         ::= Space
+    WS         ::= Null
+
+The third part of every line is the action. The action is the code that gets
+called when a rule matches.
+
+The action is a sub routine and gets passed multiple arguments. The first is a
+hash that stays the same for the entire parse. It can be to used to store anything and
+is guarenteed to be changed only by your actions.
+
+The other arguments are each item on the right hand side of the rule. 
+
+The return value of the action is the value that gets passed as an argument to
+the next rules that matched.
+
+=cut
+
