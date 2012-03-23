@@ -106,6 +106,9 @@ HEADER
         }
         else {
             $_->{char} =~ s/^\$//;
+            if ($_->{char} eq "'") {
+                $_->{char} = "\\'";
+            }
             printf("       %-30s => '%s',\n", $_->{lhs}, $_->{char});
         }
     }
