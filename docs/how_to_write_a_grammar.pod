@@ -11,7 +11,7 @@ Peter Stuifzand  <peter@tweevijftig.nl>
 
 Created: 23 Mar 2012
 
-Version: 2
+Version: 3
 
 =head1 ABSTRACT
 
@@ -94,6 +94,11 @@ the next rules that matched.
 
     Expression ::= $( List $)        {{ shift; return $_[1]; }}
     List       ::= Expression+       {{ shift; return \@_;   }}
+
+=head3 The main rule called Parser
+
+Each grammar should contain a rule called C<Parser>. This rule is the rule
+where the matching starts. Without the rule no parser will be created.
 
 =cut
 
