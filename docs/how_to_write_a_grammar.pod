@@ -1,3 +1,4 @@
+
 =head1 TITLE
 
 How to write a grammar?
@@ -9,7 +10,8 @@ Peter Stuifzand  <peter@tweevijftig.nl>
 =head1 VERSION
 
 Created: 23 Mar 2012
-Version: 1
+
+Version: 2
 
 =head1 ABSTRACT
 
@@ -18,7 +20,9 @@ you would like to do this. A grammar file consists out of two parts. The first
 part contains the rules of lexer. The second part contains the rules of the
 parser.
 
-=head1 Part 1: The Lexer
+=head1 Writing a grammar file
+
+=head2 Part 1: The Lexer
 
 The lexer reads in characters from a file handle and group these characters
 into tokens. Because this parser is based on L<Marpa::XS> it will know which
@@ -33,7 +37,7 @@ character, which is followed by a regular expression. The regular expression
 is delimited by two slashes. The parentheses will extract that part of the
 regular expression as the token text.
 
-=head1 Part 2: The parser
+=head2 Part 2: The parser
 
 The rules for the parser are a bit more involved.
 
@@ -42,6 +46,8 @@ The rules for the parser are a bit more involved.
 Each parser rule contains three parts. The left hand side, the right hand side
 and the action. The left hand and right hand side are separated by a '::='
 operator.
+
+=head3 The left hand side
 
 The left hand side should always be a Name. One name can be used multiple
 times. If a name is used multiple times, it tells the parser that it should
@@ -52,6 +58,8 @@ expect any of those expression.
 
 The above two lines tell the parser that an C<Expression> could be a C<Number> or
 a C<String>.
+
+=head3 The right hand side
 
 The right hand side can contains multiple items. Each item on the right hand
 side should follow some rules. It can contain a name from the left hand side.
@@ -70,6 +78,8 @@ finds nothing. This can be used in a whitespace rule.
     WS         ::= Space
     WS         ::= Null
 
+=head3 Actions
+
 The third part of every line is the action. The action is the code that gets
 called when a rule matches.
 
@@ -81,6 +91,9 @@ The other arguments are each item on the right hand side of the rule.
 
 The return value of the action is the value that gets passed as an argument to
 the next rules that matched.
+
+    Expression ::= $( List $)        {{ shift; return $_[1]; }}
+    List       ::= Expression+       {{ shift; return \@_;   }}
 
 =cut
 
