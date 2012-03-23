@@ -36,6 +36,10 @@ sub load_program {
             my $key = $1;
             push @program, [ 'Exists', $key ];
         }
+        elsif (m/^IsTrue\s+\@(\w+)$/) {
+            my $key = $1;
+            push @program, [ 'IsTrue', $key ];
+        }
         elsif (m/^End$/) {
             push @program, [ 'End' ];
         }
@@ -43,7 +47,7 @@ sub load_program {
             push @program, [ 'JF', $1 ];
         }
         elsif (m/^JT\s+(\w+)$/) {
-            push @program, [ 'JE', $1 ];
+            push @program, [ 'JT', $1 ];
         }
         elsif (m/^(\w+):/) {
             $labels{$1} = scalar @program;
@@ -59,12 +63,20 @@ sub create_machine {
         Emit       => sub { print $_[1]; return $_[0]->{ip}+1 },
         Emit_Field => sub { print $_[0]->{data}{$_[1]}||''; return $_[0]->{ip}+1 },
         Exists     => sub { $_[0]->{jmp_flag} = exists $_[0]->{data}{$_[1]}; return $_[0]->{ip}+1 },
+        IsTrue     => sub { $_[0]->{jmp_flag} = !!$_[0]->{data}{$_[1]}; return $_[0]->{ip}+1 },
         JF         => sub { return !$_[0]->{jmp_flag} ? $_[0]->{labels}{$_[1]} : $_[0]->{ip}+1; },
         JT         => sub { return $_[0]->{jmp_flag}  ? $_[0]->{labels}{$_[1]} : $_[0]->{ip}+1; },
         End        => sub { return -1; },
     );
 
-    open my $fh, '<', $filename or die "Can't open $filename";
+    my $fh;
+    if ($filename) {
+        open my $fh, '<', $filename or die "Can't open $filename";
+    }
+    else {
+        $fh = \*STDIN;
+    }
+
     my ($labels, $program) = load_program($fh);
 
     return sub {
@@ -80,7 +92,8 @@ sub create_machine {
 
         while ($machine->{ip} >= 0) {
             my $instr = $program->[$machine->{ip}];
-            $machine->{ip} = $opcodes{ $instr->[0] }->($machine, $instr->[1]);
+            my $op    = $opcodes{ $instr->[0] };
+            $machine->{ip} = $op->($machine, $instr->[1]);
         }
     }
 }
@@ -100,36 +113,49 @@ input {
     display:block;
 }
 </style>
+<link rel="stylesheet" href="http://hobbynu.nl/public/webwinkel/styles/latest.css">
 HEADER
 
-my @description = (
-    {
-        id          => 'sku',
-        name        => 'sku',
-        description => 'Unieke code',
-        title       => 'SKU',
-    },
-    {
-        id          => 'barcode',
-        name        => 'barcode',
-        description => 'Niet verplicht',
-        title       => 'Streepjescode',
-    },
-    {
-        id          => 'name',
-        name        => 'name',
-        title       => 'Naam',
-        description => 'Naam van uw product',
-    },
-    {
-        id          => 'price',
-        name        => 'price',
-        title       => 'Prijs',
-        description => 'In euro cent incl. btw',
-    },
-);
+#my @description = (
+#    {
+#        id          => 'sku',
+#        name        => 'sku',
+#        description => 'Unieke code',
+#        title       => 'SKU',
+#    },
+#    {
+#        id          => 'barcode',
+#        name        => 'barcode',
+#        description => 'Niet verplicht',
+#        title       => 'Streepjescode',
+#    },
+#    {
+#        id          => 'name',
+#        name        => 'name',
+#        title       => 'Naam',
+#        description => 'Naam van uw product',
+#    },
+#    {
+#        id          => 'price',
+#        name        => 'price',
+#        title       => 'Prijs',
+#        description => 'In euro cent incl. btw',
+#    },
+#);
 
-for (@description) {
-    output_html($_);
-}
+#for (@description) {
+#    output_html($_);
+#}
+
+output_html({
+    naam      => "Test",
+    besparing => 10,
+    prijs     => 190,
+    prijs_zonder_korting => 200,
+    barcode   => '1234567890',
+    pakket    => 0,
+    gewicht   => 1,
+    bestelnr  => 0,
+    hide      => 0,
+});
 

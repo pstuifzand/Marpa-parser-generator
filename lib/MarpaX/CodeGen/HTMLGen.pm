@@ -29,7 +29,7 @@ sub generate_code {
 
     for my $key (sort keys %{$self->{strings}}) {
         $self->{strings}{$key} =~ s/"/\\"/g;
-        print qq{.STR\t$key\t"$self->{strings}{$key}"\n};
+        print qq[.STR\t$key\t"$self->{strings}{$key}"\n];
     }
     print "\n";
 
@@ -55,6 +55,7 @@ sub emit_out {
 
     for (@str) {
         #s/"/\\"/g;
+        s/\n/\\n/g;
 
         if (m/^@/) {
             $self->add_line(qq{Emit $_});
@@ -79,10 +80,16 @@ sub emit_label {
     return;
 }
 
-sub emit_if_exists {
-    my ($self, $name, $lbl) = @_;
-    $self->add_line('Exists '. $name);
-    $self->add_line('JF '. $lbl);
+sub emit_if {
+    my ($self, $node, $lbl) = @_;
+    if ($node->{_exists}) {
+        $self->add_line('Exists ' . $node->{_if});
+    }
+    if ($node->{_is_true}) {
+        $self->add_line('IsTrue '. $node->{_if});
+    }
+    $self->add_line(($node->{_not} ? 'JT ' : 'JF '). $lbl);
+    return;
 }
 
 sub _generate_code {
@@ -96,7 +103,8 @@ sub _generate_code {
     elsif (ref($tree) eq 'HASH') {
         if (exists $tree->{_if}) {
             my $lbl = $self->gen_lbl();
-            $self->emit_if_exists($_->{_if}, $lbl);
+            $self->emit_if($_, $lbl);
+            #$self->emit_if_exists($_->{_if}, $lbl, $_->{_not});
             $self->_generate_code($_->{_block});
             $self->emit_label($lbl);
         }

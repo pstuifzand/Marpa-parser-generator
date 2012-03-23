@@ -69,10 +69,10 @@ my $parse_tree = $simple_lexer->parse($fh);
 OUT
 
     print <<'OUT';
-my $config = { namespace => 'My_Actions' };
+my $config = { package => 'MarpaX::Parser::Marpa', namespace => 'My_Actions' };
 eval "require $codegen_class";
-my $codegen = $codegen_class->new();
-$codegen->generate_code($parse_tree, $config);
+my $codegen = $codegen_class->new($config);
+$codegen->generate_code($parse_tree);
 OUT
 }
 
