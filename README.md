@@ -4,23 +4,16 @@ Marpa parser for parsing Marpa
 Synopsys
 --------
 
-    # We first need to generate the 'official' parser
-    # Which is created from the parser specification
+We first need to generate the 'official' parser
+Which is created from the parser specification
 
-    perl marpa_parser.pl marpa+.mp > gen_marpa.pl
+    $ make
 
-    # This version will create the parser in a package
+Which can be used with the 'marp' command
 
-    mkdir -p lib/MarpaX/Parser
+perl bin/marp [filename] [code_generator] [package...]
 
-    perl gen_marpa.pl marpa+.mp MarpaX::CodeGen::SimpleLex > lib/MarpaX/Parser/Marpa.pm
-
-
-    # Which can be used with the 'marp' command
-
-    perl bin/marp [filename] [code_generator] [package...]
-
-    perl bin/marp examples/htmlgen/htmlgen.mp MarpaX::CodeGen::SimpleLex MarpaX::Parser::HTMLGen > lib/MarpaX/Parser/HTMLGen.pm
+    $ perl bin/marp examples/htmlgen/htmlgen.mp MarpaX::CodeGen::SimpleLex MarpaX::Parser::HTMLGen > lib/MarpaX/Parser/HTMLGen.pm
 
 Description
 -----------
