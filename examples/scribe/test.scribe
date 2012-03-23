@@ -1,1 +1,5 @@
-@Begin(P)@Bold(Hello) world@End(P)
+
+@Begin(P)
+    @Bold(Hello) world
+@End(P)
+
