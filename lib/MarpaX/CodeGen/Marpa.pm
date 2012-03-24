@@ -12,7 +12,6 @@ sub new {
     return bless {}, $klass;
 }
 
-
 sub generate_code {
     my ($self, $parse_tree, $config) = @_;
     return MarpaX::CodeGen::generate_code($parse_tree, $config);

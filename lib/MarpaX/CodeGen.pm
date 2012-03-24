@@ -72,7 +72,7 @@ OUT
 my $config = { package => 'MarpaX::Parser::Marpa', namespace => 'My_Actions' };
 eval "require $codegen_class";
 my $codegen = $codegen_class->new($config);
-$codegen->generate_code($parse_tree);
+$codegen->generate_code(*STDOUT, $parse_tree);
 OUT
 }
 

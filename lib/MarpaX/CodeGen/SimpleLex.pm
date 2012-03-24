@@ -48,27 +48,27 @@ sub find_inline_tokens {
 }
 
 sub generate_code {
-    my ($self, $parse_tree) = @_;
+    my ($self, $out_fh, $parse_tree) = @_;
 
     my $package = $self->{config}->{package};
 
     find_inline_tokens($parse_tree);
 
-    print "package $package;\n";
+    print {$out_fh} "package $package;\n";
 
-    print <<'HEADER';
+    print {$out_fh} <<'HEADER';
 use strict;
 
 use Marpa::XS;
 use MarpaX::Simple::Lexer;
 HEADER
 
-    generate_tokens($parse_tree->{tokens});
+    generate_tokens($out_fh, $parse_tree->{tokens});
 
-    print generate_actions($parse_tree, $self->{config});
-    print generate_parser_code($parse_tree, $self->{config});
+    print {$out_fh} generate_actions($parse_tree, $self->{config});
+    print {$out_fh} generate_parser_code($parse_tree, $self->{config});
 
-    print <<'OUT';
+    print {$out_fh} <<'OUT';
 sub new {
     my ($klass) = @_;
     my $self = bless {}, $klass;
@@ -94,26 +94,26 @@ OUT
 }
 
 sub generate_tokens {
-    my ($tokens) = @_;
+    my ($out_fh, $tokens) = @_;
 
-    print <<'HEADER';
+    print {$out_fh} <<'HEADER';
 my %tokens = (
 HEADER
 
     for (@{ $tokens }) {
         if ($_->{regex}) {
-            printf("       %-30s => qr/%s/,\n",$_->{lhs}, $_->{regex});
+            printf {$out_fh} "       %-30s => qr/%s/,\n",$_->{lhs}, $_->{regex};
         }
         else {
             $_->{char} =~ s/^\$//;
             if ($_->{char} eq "'") {
                 $_->{char} = "\\'";
             }
-            printf("       %-30s => '%s',\n", $_->{lhs}, $_->{char});
+            printf {$out_fh} "       %-30s => '%s',\n", $_->{lhs}, $_->{char};
         }
     }
 
-    print <<'HEADER';
+    print {$out_fh} <<'HEADER';
 );
 HEADER
 }

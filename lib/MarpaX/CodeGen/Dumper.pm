@@ -14,8 +14,8 @@ sub new {
 
 
 sub generate_code {
-    my ($self, $parse_tree) = @_;
-    print Dumper($parse_tree);
+    my ($self, $out_fh, $parse_tree) = @_;
+    print {$out_fh} Dumper($parse_tree);
 }
 
 1;

@@ -22,23 +22,23 @@ sub add_string {
 }
 
 sub generate_code {
-    my ($self, $tree) = @_;
+    my ($self, $out_fh, $tree) = @_;
 
     $self->_generate_code($tree);
     $self->add_line("End");
 
     for my $key (sort keys %{$self->{strings}}) {
         $self->{strings}{$key} =~ s/"/\\"/g;
-        print qq[.STR\t$key\t"$self->{strings}{$key}"\n];
+        print {$out_fh} qq[.STR\t$key\t"$self->{strings}{$key}"\n];
     }
-    print "\n";
+    print {$out_fh} "\n";
 
     for my $line (@{$self->{lines}}) {
         if ($line =~ m/:$/) {
-            print $line . "\n";
+            print {$out_fh} $line . "\n";
         }
         else {
-            print "\t" . $line . "\n";
+            print {$out_fh} "\t" . $line . "\n";
         }
     }
 }

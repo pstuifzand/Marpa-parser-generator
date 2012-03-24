@@ -15,5 +15,5 @@ my $codegen = MarpaX::CodeGen::HTMLGen->new;
 
 my $parser = MarpaX::Parser::HTMLGen->new;
 my $parse_tree = $parser->parse($fh);
-$codegen->generate_code($parse_tree);
+$codegen->generate_code(*STDOUT, $parse_tree);
 
